@@ -21,6 +21,10 @@ Measured over 300 fights per strategy, all at the same strike density:
 
 A step, a climb, a flat line.
 
+Every number here is measured, not tuned — see
+**[difficulty-level.md](difficulty-level.md)** for the full tables and
+`bench/` for the programs that produce them.
+
 ## Play it
 
 ```sh
