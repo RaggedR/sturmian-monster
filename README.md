@@ -1,9 +1,17 @@
 # Sturmian monsters
 
 A monster attacks on a schedule that is a **Sturmian sequence**. You block by
-default, which is free and achieves nothing, or you attack — worth 2 against an
-open beat, and costing you 5 against a strike. You never see the current beat
-before committing, only the ones already past.
+default, or you attack. You never see the current beat before committing, only
+the ones already past.
+
+|            | monster **open** | monster **striking** |
+|------------|------------------|----------------------|
+| **block**  | nothing          | you take 1 *(chip)*  |
+| **attack** | it takes 2       | you take 5           |
+
+There is **no clock**. Blocking a strike costs you, so waiting is a choice you
+pay for in the same currency as everything else — which is what makes the fight
+end.
 
 The claim is that Sturmian schedules are the *interesting* ones. A periodic
 monster is solved at a finite depth and then permanently over; a random one
@@ -11,15 +19,49 @@ cannot be solved at any depth. A Sturmian one splits exactly once at every
 window length, so there is always precisely one situation your memory cannot
 resolve — and no amount of memory removes it, it only makes it rarer.
 
-Measured over 300 fights per strategy, all at the same strike density:
+Measured over 300 fights per cell, all three monsters at the same strike
+density, against a player that memorises the last *m* beats
+(`bench/ThreeMonsters.hs`):
 
 | monster | m=2 | m=4 | m=6 | m=8 | m=12 |
-|---|---|---|---|---|---|
-| periodic, period 7 | 0% | 14% | 100% | 100% | 100% |
-| Sturmian | 9% | 47% | 58% | 72% | 86% |
+|---|---:|---:|---:|---:|---:|
+| periodic, period 7 | 0% | 0% | 100% | 100% | 100% |
+| Sturmian | 21% | 56% | 68% | 82% | 83% |
 | random | 0% | 0% | 0% | 0% | 0% |
 
 A step, a climb, a flat line.
+
+## The split — and what is on the other side of it
+
+For ½ < α < ⅔ the word contains no `..` and no `HHH`, so of the three things
+the last two beats can be, **exactly one is undetermined**:
+
+```
+   H.  ->  H    certain strike     never swing   (-5 if you do)
+   HH  ->  .    certain open       always swing  (+2, free)
+   .H  ->  ?    THE SPLIT          the whole game is here
+```
+
+Notice the Sturmian row above stops climbing: 82% at m=8, 83% at m=12. A table
+memorises one level and then has nothing left to learn, because its blind spot
+is the same split at every length.
+
+But the outcomes at the `.H` sites form a Sturmian word **of their own** —
+complexity k+1, checked. So the game *renormalises*, and a player that recurses
+into the derived word learns α's next partial quotient instead of memorising
+more of the word. 300 fights, α ∈ [0.52, 0.62], 60 HP each (`./game --bench`):
+
+| strategy | wins |
+|---|---:|
+| attack every beat | 0% |
+| swing only after `HH` — never wrong, too slow to outrun the chip | 0% |
+| swing after any strike — takes the split blind | 23% |
+| memory-8 table over the raw beats (256 contexts) | 82% |
+| **renormalising, depth 4** (16 contexts on the derived word) | **92%** |
+| perfect prediction | 100% |
+
+A 16-context recursive player beats a 4096-context memoriser. Renormalising is
+worth about eight levels of raw memory, at 1/256 of the storage.
 
 Every number here is measured, not tuned — see
 **[difficulty-level.md](difficulty-level.md)** for the full tables and
@@ -29,7 +71,7 @@ Every number here is measured, not tuned — see
 
 ```sh
 ghc -O2 -o game Game.hs
-./game              # 20 HP vs 60, 120 beats. space to attack, anything else blocks
+./game              # 60 HP each. space to attack, anything else blocks
 ./game --bench      # re-check the balance if you change the constants
 ```
 

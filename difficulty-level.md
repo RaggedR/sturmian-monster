@@ -1,5 +1,11 @@
 # Difficulty
 
+> **Note.** Everything below measures the *clock-based* scoring: blocking free,
+> fight capped at 120 beats, you 20 HP. The game now uses chip scoring — block
+> a strike for 1, no clock, 60 HP each — measured in `bench/Chip.hs` and
+> summarised in the README. The law in the next section survives the change;
+> only the currency does. The specific tables do not.
+
 Measured, not tuned. Every table here comes from a program in `bench/`;
 rebuild any of them with `ghc -O2 -o /tmp/x bench/<file>.hs && /tmp/x`.
 

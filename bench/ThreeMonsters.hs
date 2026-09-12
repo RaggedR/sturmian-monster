@@ -2,8 +2,9 @@ module Main where
 import qualified Data.Map.Strict as M
 import Text.Printf (printf)
 
-php0, mhp0, beats, hitD, whiffD :: Int
-php0 = 20; mhp0 = 60; beats = 120; hitD = 2; whiffD = 5
+-- chip scoring, no clock: blocking a strike costs 1 (see Game.hs)
+php0, mhp0, hitD, whiffD, chipD, cap :: Int
+php0 = 60; mhp0 = 60; hitD = 2; whiffD = 5; chipD = 1; cap = 5000
 
 lcg :: Integer -> Integer
 lcg x = (1103515245 * x + 12345) `mod` 2147483648
@@ -20,16 +21,16 @@ randomW :: Integer -> [Int]
 randomW sd = map (\x -> if unit x < 0.571 then 1 else 0) (iterate lcg sd)
 
 sim :: ([Int] -> Bool) -> [Int] -> Bool
-sim decide tape = go php0 mhp0 [] tape beats
+sim decide tape = go php0 mhp0 [] tape cap
   where
-    go php mhp hist (b:rest) left
-      | mhp <= 0  = True
-      | php <= 0  = False
-      | left <= 0 = False
-      | otherwise = let hit = decide hist
-                    in go (if hit && b == 1 then php - whiffD else php)
-                          (if hit && b == 0 then mhp - hitD  else mhp)
-                          (b:hist) rest (left-1)
+    go _   mhp _ _ _ | mhp <= 0 = True
+    go php _   _ _ _ | php <= 0 = False
+    go _   _   _ _ 0            = False
+    go php mhp hist (b:rest) n
+      | decide hist = if b == 0 then go php (mhp - hitD)   (b:hist) rest (n-1)
+                                else go (php - whiffD) mhp (b:hist) rest (n-1)
+      | otherwise   = if b == 1 then go (php - chipD) mhp  (b:hist) rest (n-1)
+                                else go php mhp            (b:hist) rest (n-1)
     go _ _ _ [] _ = False
 
 tableN :: Int -> [Int] -> M.Map [Int] Int
@@ -53,7 +54,8 @@ rate nm n = printf "%4.0f%%" (100 * fromIntegral (length (filter id
 
 main :: IO ()
 main = do
-  printf "you %d HP, monster %d HP, %d beats. density ~0.57 in all three.  300 fights\n\n" php0 mhp0 beats
+  printf "you %d HP, monster %d HP, chip %d, whiff %d, no clock.\n" php0 mhp0 chipD whiffD
+  printf "strike density ~0.57 in all three.  300 fights per cell.\n\n"
   putStrLn "  monster    mem2  mem4  mem6  mem8  mem12"
   mapM_ (\nm -> printf "  %-9s %5s %5s %5s %5s %6s\n" nm
                   (rate nm 2) (rate nm 4) (rate nm 6) (rate nm 8) (rate nm 12))
