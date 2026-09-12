@@ -1,0 +1,125 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{What Claude Did}
+\author{Robin Langer}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+We let Claude play the game and this is what he did.
+
+\section{It played once, naively}
+
+Fight one it did the obvious thing and hunted for a period.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+$01{:}09$ & ``Exact period $5$ locked in from index $4$.'' \\
+$01{:}51$ & ``Period $12$ and period $17$ disagree on the very next beat. \\
+          & \ That's a free experiment --- block and look.'' \\
+$02{:}10$ & ``Confirmed: period $12$ from index $9$.'' \\
+$02{:}26$ & ``Fight 1 lost.'' \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each period fitted everything seen. Period $12$ was even put through a test
+designed to separate it from period $17$, passed, and then survived twenty-eight
+further beats before it broke. The fight was lost at beat $60$.
+
+\section{The tell}
+
+Then it called \code{reveal}, looked at the whole schedule, and wrote this:
+
+\begin{quote}
+The tape is a \textbf{mechanical (Sturmian) word}: beat $i$ is OPEN iff
+$\mathrm{frac}(i \cdot a + b) < a$. A single $(a,b)$ pair reproduced all $120$
+beats with zero errors. That's why every ``period'' I found held for a while
+then broke --- irrational rotations produce long \emph{almost}-periodic
+stretches (the continued-fraction convergents $5/12$, $17/41 \ldots$) that
+eventually slip.
+\end{quote}
+
+Nothing in its brief had mentioned Sturmian sequences, or irrational slopes, or
+that the schedules were generated at all. It was given the rules of a fight and
+four commands.
+
+The second sentence is the fit. The third is the insight, and it is a different
+kind of thing: \textbf{it diagnosed the generator from the pattern of its own
+failures}, not from the data.
+
+Look at what it had failed with. Periods $5$, then $12$, then $17$. That
+monster's slope was $\alpha \approx 0.4142$, and
+\[
+  \sqrt{2} - 1 = 0.41421\ldots = [0;2,2,2,\ldots],
+  \qquad
+  \text{convergents } \tfrac12,\ \tfrac25,\ \tfrac{5}{12},\ \tfrac{12}{29},\ \ldots
+\]
+Its first two hypotheses are the denominators of successive convergents, and
+$17/41$ is the mediant of $5/12$ and $12/29$ --- the next best rational
+approximation between them. It had not been finding wrong periods. It had been
+computing, one at a time and without realising, the continued-fraction expansion
+of an irrational number.
+
+A rational schedule has one period and keeps it. A sequence of periods that each
+hold and then slip, with denominators climbing $5, 12, 17, 41$, is what an
+irrational rotation looks like from inside. That is the signature, and it is
+visible only in the failures.
+
+\section{What followed}
+
+Having named the class it stopped playing and wrote a program.
+
+For a candidate slope $a$, one observed beat confines the phase $b$ to an arc of
+the circle. A history confines it to an intersection of arcs. So rather than
+choose a period, \code{engine.ts} keeps \emph{the set of every $(a,b)$ still
+consistent with everything seen} --- and attacks only on beats where every
+surviving pair agrees the monster is open. Where they disagree it returns
+\code{"?"}, and \code{"?"} means block.
+
+That is the $01{:}51$ idea --- disagreement is a free experiment --- promoted
+from a trick into a policy.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+$03{:}57$ & \code{engine.ts} & the model, $56$ lines \\
+$04{:}34$ & \code{live.ts}   & an autopilot: block twelve beats, then fit and predict \\
+$04{:}34$--$07{:}58$ & & \textbf{fights 2--10, played by the program. Nine wins} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All nine at full health, with not one mistaken swing. For scale, on these
+monsters swinging every beat wins $0\%$, swinging only on guaranteed openings
+wins $0\%$, and a fixed table on the last four beats wins $47\%$.
+
+\section{And it measured them}
+
+It then checked the claim properly, brute-forcing $(a,b)$ against all ten
+schedules --- twenty thousand slopes by four hundred phases --- and got zero
+errors on $1200$ beats. It confirmed the identification three further ways, none
+suggested to it: complexity exactly $m+1$ at every window length, balance one,
+and gaps between open beats taking only two consecutive values. Those three
+properties are not evidence for a Sturmian word; they are the definition of one.
+
+And it read off each monster's angle:
+\[
+  0.385,\; 0.414,\; 0.418,\; 0.433,\; 0.434,\; 0.455,\; 0.466,\; 0.472,\;
+  0.474,\; 0.476 .
+\]
+The generator draws its strike rate uniformly from $[0.52, 0.62]$, so the open
+rate is uniform on $[0.38, 0.48]$. It recovered the interval from ten samples,
+and marked that --- correctly --- as the least confident of its claims.
+
+\end{document}

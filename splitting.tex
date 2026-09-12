@@ -1,0 +1,280 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{xcolor}
+\definecolor{cA}{HTML}{1F4E8C}   % 010
+\definecolor{cB}{HTML}{B3261E}   % 100
+\definecolor{cC}{HTML}{1B7A3D}   % 001
+\definecolor{cD}{HTML}{B36B00}   % 101
+\newcommand{\blk}[2]{\texttt{\textbf{\textcolor{#1}{#2}}}}
+% prefix, window, suffix, colour
+\newcommand{\slide}[4]{\texttt{\textcolor{black!25}{#1}\textbf{\textcolor{#4}{#2}}\textcolor{black!25}{#3}}}
+\usepackage{parskip}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}[definition]{Example}
+\theoremstyle{plain}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{theorem}[definition]{Theorem}
+
+\title{Sturmian Sequences}
+\author{Robin Langer}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section{Windows and splits}
+
+Take an infinite sequence of $0$s and $1$s:
+\[
+  \ell \;=\; 0\,1\,0\,0\,1\,0\,1\,0\,0\,1\,0\,0\,1\,0\,1\,0 \cdots
+\]
+Slide a window $m$ letters wide along it and write down every distinct block you
+see through it. Let $F(m)$ be how many distinct blocks there are.
+
+Do it. Take $m = 3$ and walk the window along the sixteen letters above:
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+position & window & block & \\ \midrule
+$0$ & \slide{}{010}{0101001001010}{cA} & \blk{cA}{010} & new \\
+$1$ & \slide{0}{100}{101001001010}{cB} & \blk{cB}{100} & new \\
+$2$ & \slide{01}{001}{01001001010}{cC} & \blk{cC}{001} & new \\
+$3$ & \slide{010}{010}{1001001010}{cA} & \blk{cA}{010} & seen \\
+$4$ & \slide{0100}{101}{001001010}{cD} & \blk{cD}{101} & new \\
+$5$ & \slide{01001}{010}{01001010}{cA} & \blk{cA}{010} & seen \\
+$6$ & \slide{010010}{100}{1001010}{cB} & \blk{cB}{100} & seen \\
+$7$ & \slide{0100101}{001}{001010}{cC} & \blk{cC}{001} & seen \\
+$8$ & \slide{01001010}{010}{01010}{cA} & \blk{cA}{010} & seen \\
+\multicolumn{4}{c}{$\cdots$ and nothing new appears after that $\cdots$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Four distinct blocks, so $F(3) = 4$. Note which of the eight possible
+three-letter blocks never appear at all: \texttt{110}, \texttt{011},
+\texttt{111} and \texttt{000}. This sequence is far from arbitrary.
+
+Now widen the window by one letter and ask what becomes of each block. Do it:
+for each of the four, collect every letter seen following it anywhere in the
+sequence.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+block & occurs at & followed by & becomes \\ \midrule
+\blk{cA}{010} & $0,3,5,8,11,13$ & $0$ at $0$, \textbf{1} at $3$ & \blk{cA}{0100} \emph{and} \blk{cA}{0101} \\
+\blk{cB}{100} & $1,6,9$         & $1$, every time              & \blk{cB}{1001} \\
+\blk{cC}{001} & $2,7,10$        & $0$, every time              & \blk{cC}{0010} \\
+\blk{cD}{101} & $4,12$          & $0$, every time              & \blk{cD}{1010} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three of the four blocks pass through unchanged. One does
+not. \blk{cA}{010} sits at position $0$ followed by a $0$, and at position $3$
+followed by a $1$, so it becomes two blocks. Call such a block
+\emph{right-special}, and say it \emph{splits}.
+
+The blocks of length four are therefore
+\[
+  \blk{cC}{0010}, \quad \blk{cA}{0100}, \quad \blk{cA}{0101}, \quad
+  \blk{cB}{1001}, \quad \blk{cD}{1010},
+\]
+five of them, so $F(4) = 5$. We started with four and exactly one split --- and
+the two blue ones are the two halves of it.
+
+Every block either passes through or splits in two, so
+
+\begin{definition}
+\[
+  F(m+1) - F(m) \;=\; \#\{\text{blocks of length } m \text{ that split}\}.
+\]
+\end{definition}
+
+Here is why the count is worth having. Suppose you are reading $\ell$ one letter
+at a time, trying to call the next letter, and you can remember only the last
+$m$. Then two occurrences of the same block are indistinguishable to you: you
+are in the same situation both times, and whatever rule you are using must say
+the same thing at both. If that block splits, the next letter genuinely differs
+between the two occurrences, so you are wrong at one of them. Not through bad
+judgement --- the letters you can see do not contain the answer.
+
+So counting splits counts the situations in which $m$ letters of memory are not
+enough, and a sequence whose splitting stops at some finite $m$ is one you can
+predict perfectly from a finite table.
+
+\section{Sturmian sequences}
+
+\begin{definition}
+A sequence is \emph{Sturmian} when exactly one block of each length splits:
+\[
+  F(m) = m + 1 \qquad \text{for every } m \geq 1 .
+\]
+\end{definition}
+
+The sequence of \S1 is Sturmian: it is the Fibonacci sequence, the fixed point
+of $0 \mapsto 01$, $1 \mapsto 0$. We found $F(3) = 4$ and $F(4) = 5$, with
+\blk{cA}{010} the block that splits. Here are two more, worked the same way.
+
+\begin{example}[the Pell sequence, $0 \mapsto 001$, $1 \mapsto 0$]
+\[
+  \ell \;=\; \texttt{001001000100100010010010}\cdots
+\]
+Its four blocks of length three are \blk{cA}{000}, \blk{cB}{001},
+\blk{cC}{010}, \blk{cD}{100}, so $F(3) = 4$. Note $11$ never occurs.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+block & occurs at & followed by & becomes \\ \midrule
+\blk{cA}{000} & $6,13,23$   & $1$, every time              & \blk{cA}{0001} \\
+\blk{cB}{001} & $0,3,7,10$  & $0$, every time              & \blk{cB}{0010} \\
+\blk{cC}{010} & $1,4,8,11$  & $0$, every time              & \blk{cC}{0100} \\
+\blk{cD}{100} & $2,5,9,12$  & \textbf{1} at $2$, $0$ at $5$ & \blk{cD}{1001} \emph{and} \blk{cD}{1000} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+One split, so $F(4) = 5$: \blk{cA}{0001}, \blk{cB}{0010}, \blk{cC}{0100},
+\blk{cD}{1000}, \blk{cD}{1001}.
+\end{example}
+
+\begin{example}[the rotation of slope $\alpha = 1/\sqrt{2}$]
+\[
+  \ell \;=\; \texttt{011011011101101110110110}\cdots
+\]
+Now the $1$s are in the majority --- the density is $0.707$ --- and $00$ never
+occurs. The four blocks of length three are \blk{cA}{011}, \blk{cB}{101},
+\blk{cC}{110}, \blk{cD}{111}.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+block & occurs at & followed by & becomes \\ \midrule
+\blk{cA}{011} & $0,3,6,10$  & $0$ at $0$, \textbf{1} at $6$ & \blk{cA}{0110} \emph{and} \blk{cA}{0111} \\
+\blk{cB}{101} & $2,5,9,12$  & $1$, every time               & \blk{cB}{1011} \\
+\blk{cC}{110} & $1,4,8,11$  & $1$, every time               & \blk{cC}{1101} \\
+\blk{cD}{111} & $7,14,24$   & $0$, every time               & \blk{cD}{1110} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Again one split, so $F(4) = 5$: \blk{cA}{0110}, \blk{cA}{0111},
+\blk{cB}{1011}, \blk{cC}{1101}, \blk{cD}{1110}.
+\end{example}
+
+Three sequences with nothing in common to look at --- one sparse, one balanced,
+one dense; two built by substitution and one by rotation --- and in each the
+same thing happens. Four blocks of length three, exactly one of them ambiguous,
+five blocks of length four. Whatever the slope, there is precisely one situation
+at each width in which the letters you can see do not determine the next one.
+
+Those three are not a coincidence, and there is a complete description of the
+sequences that behave this way.
+
+\begin{theorem}[Morse--Hedlund]
+A sequence $\ell$ is Sturmian if and only if there are an irrational
+$\alpha \in (0,1)$ and a $\rho \in [0,1)$ with
+\[
+  \ell_k \;=\; \lfloor (k+1)\alpha + \rho \rfloor - \lfloor k\alpha + \rho \rfloor
+  \qquad \text{for all } k \geq 0 .
+\]
+The \emph{slope} $\alpha$ is the density of $1$s in $\ell$ and is determined by
+$\ell$; the \emph{intercept} $\rho$ only says where in the sequence you started
+reading. We do not prove this.
+\end{theorem}
+
+So there is one Sturmian sequence for each irrational slope, up to where you
+begin. The three worked above are
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+sequence & slope $\alpha$ & & \\ \midrule
+Fibonacci, $0 \mapsto 01,\ 1 \mapsto 0$ & $1/\varphi^{2} = (3-\sqrt{5})/2$ & $\approx 0.381966$ & no $11$ \\
+Pell, $0 \mapsto 001,\ 1 \mapsto 0$     & $1 - 1/\sqrt{2}$                & $\approx 0.292893$ & no $11$ \\
+the rotation of \S2                      & $1/\sqrt{2}$                    & $\approx 0.707107$ & no $00$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last column is not an accident either: a Sturmian sequence contains $11$
+exactly when $\alpha > \tfrac12$, and $00$ exactly when $\alpha < \tfrac12$.
+Two of these slopes lie below a half and one above.
+
+\section{Why Sturmian sequences make interesting monsters}
+
+Here is a game built from one of these sequences. It is the monster's schedule:
+at beat $k$ the monster strikes if $\ell_k = 1$, and stands open if
+$\ell_k = 0$.
+
+You never see the current letter before you commit. You see only the letters
+already past. Each beat you choose one of two things:
+
+\begin{center}
+\begin{tabular}{ll}
+\textbf{block}  & nothing happens, whatever the monster does \\[0.3em]
+\textbf{attack} & on an open beat, the monster loses $2$ \\
+                & into a strike, you lose $5$ \\
+\end{tabular}
+\end{center}
+
+You start on $20$ points and the monster on $60$. The fight lasts $120$ beats.
+
+Three things follow. You need thirty clean reads to win. You can afford three
+mistakes. And blocking forever is a loss, not a draw --- the clock runs out with
+the monster untouched.
+
+A player who remembers the last $m$ letters is exactly the thing \S1 describes:
+it cannot tell two occurrences of the same block apart, so it plays them
+identically, and the blocks that split are precisely the situations where that
+costs it. Give such a player a table learned from previous encounters and set it
+against monsters of each kind, all with the same density of strikes so that only
+the splitting differs:
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+monster & $m=2$ & $m=4$ & $m=6$ & $m=8$ & $m=12$ \\ \midrule
+periodic, period $7$ & $0\%$ & $14\%$ & $100\%$ & $100\%$ & $100\%$ \\
+Sturmian             & $9\%$ & $47\%$ & $58\%$  & $72\%$  & $86\%$ \\
+random               & $0\%$ & $0\%$  & $0\%$   & $0\%$   & $0\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Win rates over $300$ fights each. Three shapes: a step, a climb, a flat line.
+
+\paragraph{Periodic: nothing left.} Its splitting stops at $m = 6$, and the
+table says the same thing. Below six letters the player has almost nothing;
+at six it has a complete theory of the monster and never loses again. There is
+one threshold, and on the far side of it the game is over permanently --- not
+won, but finished, because no further observation can teach anything. A monster
+you beat this way you have beaten for good, and the second encounter is the
+first one replayed.
+
+\paragraph{Random: nothing to get.} Every block splits at every length, so no
+table of any depth is ever a theory of anything. Memory $12$ is worth exactly
+what memory $2$ is worth, which is nothing: the player is guessing, guessing
+costs $5$ and pays $2$, and it loses every time. Study is not merely
+insufficient here, it is pointless, and a player who works that out correctly
+concludes there is nothing to work out.
+
+\paragraph{Sturmian: always something, never everything.} Exactly one block of
+each length splits. So a player holding $m$ letters has exactly one situation it
+cannot call --- and by the nesting of \S2, the ambiguous block at depth $m+1$
+sits inside the one at depth $m$. Each extra letter of memory therefore cuts the
+outstanding ambiguity into a rarer case without ever removing it. That is
+precisely a curve which rises at every depth and reaches $100\%$ at none, and it
+is what the middle row measures.
+
+\end{document}

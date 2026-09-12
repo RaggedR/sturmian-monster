@@ -1,0 +1,12 @@
+# compiled game binary — rebuild with: ghc -O2 -o game Game.hs
+game
+*.o
+*.hi
+# latex intermediates
+*.aux
+*.log
+*.out
+
+# not published: draft correspondence, and a lessons file with personal notes
+neil.txt
+LESSONS.md
