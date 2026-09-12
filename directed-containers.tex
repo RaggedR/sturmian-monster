@@ -1,0 +1,555 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{stmaryrd}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\definecolor{cKey}{HTML}{1F4E8C}
+\definecolor{cCom}{HTML}{6B7280}
+\definecolor{cBg}{HTML}{F7F7F5}
+
+\lstdefinestyle{pseudo}{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{cKey}\bfseries,
+  commentstyle=\color{cCom}\itshape,
+  backgroundcolor=\color{cBg},
+  frame=leftline, framerule=1.2pt, rulecolor=\color{cKey!30},
+  xleftmargin=1.2em, framexleftmargin=1.2em,
+  aboveskip=1em, belowskip=1em,
+  columns=fullflexible, keepspaces=true,
+  morecomment=[l]{--},
+  morekeywords={type,data,where,let,in,if,then,else,case,of,for,while,
+                return,function,and,or,not,do,forall,class,instance}
+}
+\lstset{style=pseudo}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}[definition]{Example}
+\theoremstyle{plain}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{theorem}[definition]{Theorem}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\newcommand{\dc}{\ensuremath{S \triangleleft P}}
+\newcommand{\den}[1]{\ensuremath{\llbracket #1 \rrbracket}}
+
+\title{A game on a directed container}
+\author{Claude Opus 5 --- for Robin Langer}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\begin{abstract}
+\noindent
+The repository \texttt{stream} contains a fighting game built on the
+\emph{stream comonad}. Stream is the degenerate directed container: one shape,
+one future. This note defines the directing structure in general, gives
+pseudocode, and reports what happened when a game was designed on a
+non-degenerate one.
+
+The short version: the game failed, twice, for reasons worth recording. The
+mathematics it was built on survives intact. And the place where the director
+\emph{does} earn its keep turned out not to be the new game at all, but the old
+one --- the renormalisation that the shipped game now runs on is a statement
+about the endomorphism monoid of a directed container.
+\end{abstract}
+
+\section{Containers}
+
+A \emph{container} is a pair \dc{} consisting of a set $S$ of \emph{shapes} and,
+for each shape $s : S$, a set $P\,s$ of \emph{positions} in that shape. Shapes
+are templates; positions are the blanks in a template that data can be poured
+into. A container denotes a functor on $\mathbf{Set}$:
+\[
+  \den{\dc}\,X \;=\; \sum_{s : S} X^{P\,s},
+\]
+an element of which is a shape together with a labelling of its positions. A
+list is the container with $S = \mathbb{N}$ (the length) and
+$P\,s = \{0,\dots,s-1\}$. A stream is the container with $S = 1$ and
+$P\,\ast = \mathbb{N}$.
+
+Containers denote functors, and functors alone. To get a \emph{comonad} --- to
+get \texttt{extract} and \texttt{duplicate}, and therefore \texttt{extend} ---
+something more is needed, and that something is what a director supplies.
+
+\section{The director}
+
+\begin{definition}[Ahman--Chapman--Uustalu]\label{def:dc}
+A \emph{directed container} is a container \dc{} together with three operations
+\[
+\begin{array}{ll}
+  \downarrow \;:\; \Pi\,s : S.\; P\,s \to S
+    & \text{the \emph{subshape} at a position,}\\[2pt]
+  o \;:\; \Pi\,\{s : S\}.\; P\,s
+    & \text{the \emph{root} position,}\\[2pt]
+  \oplus \;:\; \Pi\,\{s : S\}.\;\Pi\,p : P\,s.\; P\,(s \downarrow p) \to P\,s
+    & \text{\emph{translation} into a global position,}
+\end{array}
+\]
+satisfying two shape equations and three position equations:
+\begin{align}
+  s \downarrow o &= s \\
+  s \downarrow (p \oplus p') &= (s \downarrow p) \downarrow p' \\
+  p \oplus o &= p \\
+  o \oplus p &= p \\
+  (p \oplus p') \oplus p'' &= p \oplus (p' \oplus p'')
+\end{align}
+\end{definition}
+
+I will call the triple $(\downarrow, o, \oplus)$ the \emph{director} of the
+container, and $\downarrow$ itself the \emph{directing map}: given where you are
+and a position you can see from there, it \emph{directs} you to the world as
+seen from that position.
+
+\begin{remark}
+This is my naming, not the literature's. Ahman, Chapman and Uustalu call
+$\downarrow$ the subshape operation, $o$ the root and $\oplus$ translation, and
+do not use the word ``director'' anywhere in the paper. The polynomial-functor
+school does use \emph{directions} for what containers call positions, which is
+the nearest standard usage. If ``director'' means something specific to you or
+to Kodamai that differs from Definition~\ref{def:dc}, this is the one place in
+the document that needs changing.
+\end{remark}
+
+Read the laws as geometry. Law (1) says the subshape at the root is the whole
+shape --- looking from where you already are changes nothing. Law (3) says the
+root of the subshape at $p$ translates back to $p$ itself, so the subshape given
+by a position really is \emph{rooted} at that position. Law (2) says that going
+to $p$ and then to $p'$ lands on the same shape as going directly to
+$p \oplus p'$. Laws (3)--(5) are the monoid laws, except that the three
+positions live in three different sets, so it is a monoid only in a dependent
+sense. Laws (1)--(2) are the laws of a monoid \emph{action}.
+
+That last observation is the whole content of the definition. A directed
+container is a monoid-like structure of positions acting on shapes, where the
+monoid you get depends on where you are standing.
+
+\subsection{How the director is used: it is exactly a comonad}
+
+\begin{theorem}[ACU]
+$\den{\dc}$ carries a comonad structure precisely when \dc{} carries a director.
+\end{theorem}
+
+The comonad is built from the director directly:
+\[
+\begin{array}{ll}
+  \varepsilon\,(s, f) &=\; f\,(o) \\[3pt]
+  \delta\,(s, f) &=\; \bigl(s,\;\lambda p.\;
+      (\,s \downarrow p,\;\; \lambda p'.\; f\,(p \oplus p')\,)\bigr)
+\end{array}
+\]
+$\varepsilon$ reads the label at the root: \emph{what is true here}.
+$\delta$ replaces the label at each position $p$ by the entire structure
+re-rooted at $p$: \emph{the world as it looks from there}. The type-checking of
+$\delta$ is exactly laws (1)--(2), and its comonad laws are exactly (3)--(5).
+And then
+\[
+  \mathrm{extend}\; :\; (\den{\dc}A \to B) \;\to\; \den{\dc}A \to \den{\dc}B,
+  \qquad \mathrm{extend}\,g \;=\; \den{\dc}g \circ \delta,
+\]
+which runs a rule that needs to see a whole neighbourhood at \emph{every}
+position at once. That is the operation \texttt{fmap} cannot express, and it is
+the reason the structure is worth having.
+
+\subsection{Stream is the degenerate case}
+
+Take $S = 1$, $P\,\ast = \mathbb{N}$, $s \downarrow p = s$, $o = 0$,
+$p \oplus p' = p + p'$. Laws (1)--(2) are trivial because the shape never
+changes; laws (3)--(5) are $p+0=p$, $0+p=p$ and associativity of $+$. Then
+$\den{\dc}X = X^{\mathbb{N}}$ is streams, $\varepsilon$ is \texttt{head}, and
+$\delta$ is \texttt{tails}. The file \texttt{StreamComonad.hs} prints $\delta$
+applied to $0,1,2,\dots$ and observes that it is the addition table. That is
+law (2) with $\downarrow$ erased.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+ & stream & general directed container \\
+\midrule
+shapes $S$        & one                 & many: the world depends on where you stand \\
+$s \downarrow p$  & $s$, unchanged      & a \emph{different} world \\
+$\oplus$          & $+$, commutative    & composition, \textbf{not} commutative \\
+futures           & exactly one         & \textbf{you choose} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The director we use: a graph}
+
+Let $G$ be a directed graph. Define
+\[
+  S = \text{vertices}, \quad
+  P\,v = \{\text{finite paths out of } v\}, \quad
+  v \downarrow p = \mathrm{target}(p), \quad
+  o = \varepsilon, \quad
+  p \oplus p' = p \cdot p'.
+\]
+All five laws hold, and this is the free category on $G$. Now $\oplus$ is
+genuinely non-commutative and $\downarrow$ genuinely moves you.
+
+This is not a coincidence of the example. Ahman and Uustalu proved that
+\emph{directed containers are precisely small categories}: objects are shapes,
+morphisms out of $s$ are positions in $P\,s$, $\downarrow$ is codomain, $o$ is
+the identity and $\oplus$ is composition. A director is a category wearing the
+notation of a data structure. Section~\ref{sec:endo} is where that fact does
+some work.
+
+\section{The world: a Rauzy graph}
+
+Fix an irrational slope $\alpha$ and let $w$ be the Sturmian word of slope
+$\alpha$. Its \emph{Rauzy graph of order $m$} has one vertex per factor of
+length $m$ --- a \emph{room} --- and an edge $u \to v$ whenever $u = a\sigma$
+and $v = \sigma b$ with $a\sigma b$ a factor, which \emph{emits} the bit $b$.
+
+Walking the graph emits a bit sequence, and \textbf{the room you stand in
+\emph{is} the last $m$ bits you emitted}. The rooms are not extra state; they
+are your own recent history.
+
+\begin{proposition}\label{prop:necklace}
+The Rauzy graph of order $m$ of a Sturmian word has exactly $m+1$ rooms and
+$m+2$ doors, and exactly one room has two doors, whose bits differ.
+\end{proposition}
+
+Checked in \texttt{Rauzy.hs}, 40 slopes $\times$ 6 orders, $240/240$ on each
+count. The $m+1$ is the Sturmian complexity function $p(m) = m+1$: the ``one
+split at every window length'' of \texttt{splitting.pdf} is \textbf{one
+branching room}. Depending on whether the right- and left-special factors
+coincide, the graph is a \emph{theta} (two arcs reconverging) or a
+\emph{figure-eight} (two loops meeting at a point).
+
+\section{The game that was designed, and why it failed}
+
+The design: you are inside the schedule rather than watching it go past. Each
+beat you choose a door; the bit it emits is the monster's action that beat.
+Combat is unchanged from \texttt{Game.hs}. Most rooms have one door --- no
+choice, exactly the old game. One room has two.
+
+It failed twice, and both failures are worth more than the design was.
+
+\subsection{The fiction would not go into words}
+
+Asked how a monster can have doors, the answer is that it cannot. ``Rooms'' and
+``doors'' were imported from a \emph{picture} of the graph without checking that
+the metaphor survived the transplant. The vertices are not places; they are
+\emph{situations} --- the last $m$ beats of the exchange --- and the edges are a
+positioning choice that constrains what the monster can do next.
+
+\subsection{Stated plainly, the mechanic died}
+
+Once the fiction is stated properly --- ``you choose whether the monster strikes
+you'' --- the next question is immediate: why would you ever choose to be
+struck? The intended answer was a trade: the free hit now versus the density of
+the loop it commits you to. Measured over 400 slopes at each of five orders:
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+does taking the beat that is open \emph{now} also give the denser loop? & \\
+\midrule
+$m = 3,\,5,\,8,\,13,\,21$ & $1993/1993$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{They never disagree.} The greedy step is always also the better
+long-run loop, so the one decision in the world has a dominant answer requiring
+no lookahead at all. What remained was an information problem --- find out which
+door is open --- with no strategy in it.
+
+\begin{remark}
+An earlier draft of this document called the reference player ``Karp'' and
+described the branch as a choice between convergents. Both were wrong, and the
+dominance result above is why. Plain greed is optimal; the max-mean-cycle
+framing was decorative. That claim is withdrawn.
+\end{remark}
+
+\section{Pseudocode}
+
+\subsection{The director, as an interface}
+
+\begin{lstlisting}
+type Shape
+type Position         -- indexed by a shape: Position s
+
+class DirectedContainer where
+  down  :: Shape -> Position s -> Shape          -- s |> p     the directing map
+  root  :: Position s                            -- o
+  plus  :: Position s -> Position (down s p) -> Position s   -- p <+> p'
+
+-- LAWS
+--   down s root          == s            plus p root          == p
+--   down s (plus p p')   == down (down s p) p'
+--   plus root p          == p
+--   plus (plus p p') p'' == plus p (plus p' p'')
+\end{lstlisting}
+
+\subsection{The comonad it generates}
+
+\begin{lstlisting}
+data Den x = Den Shape (Position -> x)      -- [| S <| P |] x
+
+extract :: Den x -> x
+extract (Den s f) = f root                  -- what is true HERE
+
+duplicate :: Den x -> Den (Den x)
+duplicate (Den s f) =
+  Den s (\p -> Den (down s p)               -- the world re-rooted at p ...
+                   (\p' -> f (plus p p')))  -- ... relabelled by translation
+
+extend :: (Den a -> b) -> Den a -> Den b
+extend g = fmap g . duplicate               -- run g at EVERY position at once
+\end{lstlisting}
+
+\noindent
+Specialising to $S = 1$, $\texttt{down}\,s\,p = s$, $\texttt{root} = 0$,
+$\texttt{plus} = (+)$ turns \texttt{duplicate} into \texttt{tails} and
+$\texttt{plus}\,p\,p'$ into $p + p'$ --- the addition table.
+
+\subsection{Building the world, and the fight}
+
+\begin{lstlisting}
+sturmian alpha rho =
+  [ floor ((k+1)*alpha + rho) - floor (k*alpha + rho) | k <- [0..] ]
+
+rauzy m w = groupByRoom [ (window m i, (w !! (i+m), window m (i+1)))
+                        | i <- [0 .. prefix] ]
+  where window m i = take m (drop i w)
+
+fight graph start playerHP monsterHP policy =
+  loop start playerHP monsterHP emptyMap
+  where
+    loop room php mhp known
+      | mhp <= 0 = WIN
+      | php <= 0 = DEAD
+      | otherwise =
+          let doors       = doorsOf graph room
+              (i, attack) = policy room known     -- the coKleisli arrow
+              (bit, next) = doors !! i            -- <-- this IS  room |> p
+              php'        = if attack and bit == STRIKE then php - 5 else php
+              mhp'        = if attack and bit == OPEN   then mhp - 2 else mhp
+          in loop next php' mhp' (insert (room, i) bit known)
+\end{lstlisting}
+
+\noindent
+\texttt{doors !!\ i} is the directing map applied to a length-one position, and
+\texttt{known} is a \emph{partial} element of $\den{\dc}\,\texttt{Bit}$: a
+partial function on positions, defined exactly on the doors already walked.
+Scouting enlarges its domain.
+
+\section{What was measured}
+
+All figures 300 fights per cell, $\alpha$ uniform in $[0.25, 0.75]$.
+
+\subsection{The mathematics that survives}
+
+\begin{proposition}\label{prop:conv}
+The open-densities of the two cycles through the branching room are the best
+rational approximations to $1 - \alpha$ from above and from below, among
+fractions with denominator at most $m+1$.
+\end{proposition}
+
+Agreement: $300/300$ at $m = 3, 5, 8, 13$ and $299/300$ at $m = 21$. Worked
+cases at $m = 8$:
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+$\alpha$ & $1-\alpha$ & cycle densities & best approximations \\
+\midrule
+0.3026 & 0.6974 & $5/7,\ 2/3$ & $5/7$ and $2/3$ \\
+0.3490 & 0.6510 & $5/8,\ 2/3$ & $2/3$ and $5/8$ \\
+0.6536 & 0.3464 & $1/3,\ 3/8$ & $3/8$ and $1/3$ \\
+0.7000 & 0.3000 & $1/3,\ 2/7$ & $1/3$ and $2/7$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{remark}[a correction]
+I first stated this with denominator at most $m$, and it failed on roughly 30\%
+of slopes. Every failure had denominator exactly $m+1$ --- unsurprising, since
+the graph has $m+1$ rooms and no simple cycle can be longer. With the corrected
+bound the agreement is $1499/1500$.
+\end{remark}
+
+\subsection{The design that does not}
+
+Even before the dominance result, the decision was worth almost nothing at any
+usable map size. Mean damage over 120 beats with no HP pool, so that nothing
+hides behind a win threshold:
+
+\begin{center}
+\begin{tabular}{rrrrrr}
+\toprule
+$m$ & first arc & scouts both & oracle & arc gap $\Delta d$ & doors differ by \\
+\midrule
+3  & 104.1 & 131.3 & 137.0 & 0.1389 & 33.3 dmg \\
+5  & 112.2 & 123.0 & 130.7 & 0.0854 & 20.5 dmg \\
+8  & 114.8 & 114.5 & 125.0 & 0.0398 & \phantom{0}9.6 dmg \\
+13 & 109.0 & 107.4 & 122.7 & 0.0200 & \phantom{0}4.8 dmg \\
+21 & 103.7 & \phantom{0}98.1 & 121.4 & 0.0095 & \phantom{0}2.3 dmg \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The gap decays roughly as $m^{-1.4}$, because the two return times are typically
+of very unequal size. At $m = 8$ --- the size I had planned to ship --- the two
+doors differ by under 10 damage in a fight of 120.
+
+\subsection{And pursuit would not have saved it}
+
+A chase (you move two steps, the monster one) needs a board with somewhere to
+hide. Sturmian Rauzy graphs have exactly one fork at every order, by
+Proposition~\ref{prop:necklace}; and Arnoux--Rauzy words, whose complexity is
+$2m+1$, also have exactly one, merely of out-degree three:
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+ & $m=5$ & $m=8$ & $m=13$ & $m=21$ \\
+\midrule
+Sturmian, branch vertices   & 1 & 1 & 1 & 1 \\
+\quad out-degrees           & \multicolumn{4}{l}{one vertex of degree 2, rest degree 1} \\
+Tribonacci, branch vertices & 1 & 1 & 1 & 1 \\
+\quad out-degrees           & \multicolumn{4}{l}{one vertex of degree 3, rest degree 1} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+One fork per lap is one binary guess per lap, which is the decision structure
+the original game already has. Tribonacci's three-way fork is the version that
+could not be straddled, and is where I would look if pursuit were wanted.
+
+\section{Where the director earns its keep}\label{sec:endo}
+
+None of the above uses the director for anything a bare graph could not do: only
+length-one positions, a $\downarrow$ with no shape content, and
+\texttt{extend} never called once. But the identification
+\emph{directed container $=$ small category} has a consequence that is not
+decorative.
+
+In a small category, the morphisms from an object to itself form a
+\textbf{monoid}. Translated back: the positions $p \in P\,s$ with
+$s \downarrow p = s$ are closed under $\oplus$, contain $o$, and are associative
+--- by laws (1)--(5) and nothing else. For the Rauzy graph, the loops at the
+branching room are freely generated by the two simple cycles, because every loop
+there decomposes uniquely into them.
+
+So a trajectory through the world, read \emph{in the endomorphism monoid of the
+branching object}, is an infinite word on two letters: which loop was taken,
+each time round.
+
+\begin{proposition}
+That word is Sturmian again.
+\end{proposition}
+
+Checked at $m = 2, 3, 5, 8, 13$, six slopes each: complexity $k+1$ in all
+$30/30$ cases.
+
+This is the classical renormalisation of a Sturmian word --- passing to the
+derived word shifts the slope by the Gauss map, i.e.\ consumes one partial
+quotient of $\alpha$ --- but stated in the container's own language it says
+something sharper: \textbf{the directed container contains a copy of itself,
+sitting in the endomorphism monoid of its one branching object.}
+
+\subsection{And this is what the shipped game now runs on}
+
+At $m = 2$ the branching room is the factor \texttt{.H}, and the loop taken is
+just the next beat. Robin's reading of the game is then a set of theorems rather
+than heuristics: for $1/2 < \alpha < 2/3$ the word contains no \texttt{..} and
+no \texttt{HHH} ($0/300$ each), so of the three length-2 contexts exactly one is
+undetermined:
+\[
+  \texttt{H.} \to \texttt{H} \ \text{certain},
+  \qquad
+  \texttt{HH} \to \texttt{.} \ \text{certain},
+  \qquad
+  \texttt{.H} \to \texttt{?} \ \text{the split.}
+\]
+Together with his replacement of the fight clock by \emph{chip damage} --- a
+blocked strike costs 1, so stalling is paid for in the same currency as
+everything else --- this gives a game with no dominant strategy and a ceiling a
+table cannot reach. 300 fights, $\alpha \in [0.52, 0.62]$, 60 HP each:
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+strategy & wins \\
+\midrule
+attack every beat & \phantom{00}0\% \\
+swing only after \texttt{HH} --- never wrong, too slow to outrun the chip & \phantom{00}0\% \\
+swing after any strike --- takes the split blind & \phantom{0}23\% \\
+memory-8 table on the raw beats (256 contexts) & \phantom{0}82\% \\
+\textbf{renormalising, depth 4} (16 contexts on the derived word) & \textbf{92\%} \\
+perfect prediction & 100\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A 16-context recursive player beats a 4096-context memoriser, because it learns
+$\alpha$'s next partial quotient instead of memorising more of the word. The
+memory-8 table flatlines at 82--83\% no matter how deep it goes; the
+renormaliser does not, and Section~\ref{sec:endo} is why.
+
+\section{What a richer game would have to use}
+
+The test I should have applied at the start: \textbf{if the mechanic still works
+after you delete the director, the director was decoration.} Three parts of
+Definition~\ref{def:dc} went unused, and each is a mechanic.
+
+\begin{enumerate}\itemsep4pt
+\item \textbf{$P\,s$ is all paths, not all steps.} Make a move a declared path
+      $p \in P\,s$: commit $k$ beats, blind for $k$, land at $s \downarrow p$.
+      Law (5) is exactly what makes a combo mean one thing however you bracket
+      it, and non-commutativity of $\oplus$ is the mathematical content of
+      \emph{initiative} --- invisible in the stream case, where positions
+      commute.
+\item \textbf{$\downarrow$ can consume the world.} The worst thing in the
+      current design is \texttt{beats = 120}, a constant with no mathematical
+      content. In the non-empty-list director, $s \downarrow p = s - p$: moving
+      does not relocate you, it \emph{spends} the world. Then ``out of time'' is
+      ``$s \downarrow p$ has no positions left'', and irreversibility is felt
+      rather than asserted.
+\item \textbf{\texttt{extend} is the verb no functor has.} Make it a
+      consumable: spend a \emph{read}, and a fixed rule runs over your whole
+      forward cone at once. A game whose central action is \texttt{extend} does
+      not typecheck without $\delta$, and $\delta$ does not exist without laws
+      (1)--(2). That is a mechanic the director cannot be deleted from.
+\end{enumerate}
+
+\noindent
+And morphisms give the difficulty dial for free: ``drop the last letter'' is a
+functor $G_{m+1} \to G_m$, so bounded memory is a \emph{quotient} directed
+container and levelling up is climbing one rung of a tower whose inverse limit
+is the Sturmian system itself.
+
+\section{Status}
+
+In the repository and verified: \texttt{Rauzy.hs}
+(Proposition~\ref{prop:necklace}, $240/240$), \texttt{bench/Warren.hs}
+(Proposition~\ref{prop:conv}, $1499/1500$), \texttt{bench/Chip.hs} and
+\texttt{Game.hs} (the chip scoring and the renormalising player). Designed but
+not written: \texttt{Directed.hs}, checking the five laws exhaustively on a
+container where $\oplus$ is non-commutative.
+
+Not built, deliberately: the Warren. Its mathematics is above; its mechanic has
+a dominant answer. The next thing actually worth measuring is a renormaliser of
+depth $d > 1$, recursing all the way down the continued fraction of $\alpha$
+rather than stopping after one level.
+
+\vspace{1em}\noindent\textbf{Sources.}
+D.~Ahman, J.~Chapman, T.~Uustalu, \emph{When is a container a comonad?}, LMCS
+10(3:14), 2014, \url{https://lmcs.episciences.org/894/pdf} ---
+Definition~\ref{def:dc} is their Definition 3.1.
+D.~Ahman, T.~Uustalu, \emph{Directed containers as categories}, MSFP 2016,
+\url{https://arxiv.org/pdf/1604.01187}.
+
+\end{document}
